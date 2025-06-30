@@ -10,7 +10,7 @@
     button { padding: 10px 20px; margin: 10px 0; background: #2c3e50; color: white; border: none; }
     table { width: 100%; margin-top: 10px; border-collapse: collapse; }
     th, td { border: 1px solid #aaa; padding: 8px; text-align: left; }
-    #respuesta { margin-top: 12px; font-weight: bold; color: green; }
+    #respuesta { margin-top: 12px; font-weight: bold; color: green; white-space: pre-line; }
   </style>
 </head>
 <body>
@@ -58,30 +58,30 @@ fetch(URL_CSV)
   .then(res => res.text())
   .then(csv => {
     const filas = csv.split("\n").map(f => f.split(","));
-    // Localidades (hoja 3)
-    localidades = filas.slice(1, 31).map(f => f[0]).filter(x => x);
+    localidades = filas.slice(1, 50).map(f => f[0]).filter(x => x);
     localidades.forEach(c => {
       let opt = document.createElement("option");
       opt.value = c;
       opt.textContent = c;
       document.getElementById("ciudad").appendChild(opt);
     });
-    // Vendedores (hoja 2)
-    vendedores = filas.slice(1, 31).map(f => f[1]).filter(x => x);
+
+    vendedores = filas.slice(1, 30).map(f => f[1]).filter(x => x);
     vendedores.forEach(v => {
       let opt = document.createElement("option");
       opt.value = v;
       opt.textContent = v;
       document.getElementById("vendedor").appendChild(opt);
     });
-    // Categorías y productos (hoja 1)
+
     let headers = filas[0];
     for (let i = 0; i < headers.length; i++) {
       let categoria = headers[i].trim();
       if (!categoria) continue;
       categorias[categoria] = filas.slice(1, 51).map(f => f[i]).filter(x => x);
     }
-    agregarProducto(); // inicia con una línea
+
+    agregarProducto(); // inicia
   });
 
 function agregarProducto() {
@@ -138,21 +138,30 @@ document.getElementById("pedidoForm").addEventListener("submit", function(e) {
   form.append("timestamp", new Date().toISOString());
   form.append("numLineas", document.querySelectorAll(".linea").length);
 
+  const respuestaDiv = document.getElementById("respuesta");
+  respuestaDiv.style.color = "black";
+  respuestaDiv.textContent = "Enviando pedido...";
+
   fetch("https://script.google.com/macros/s/TU_ID_DEL_WEBAPP/exec", {
     method: "POST",
     body: form
   })
-  .then(res => res.text())
+  .then(res => {
+    if (!res.ok) throw new Error("Error HTTP: " + res.status);
+    return res.text();
+  })
   .then(respuesta => {
-    document.getElementById("respuesta").innerText = respuesta;
+    respuestaDiv.style.color = "green";
+    respuestaDiv.innerText = "✅ Pedido enviado correctamente.\n" + respuesta;
     e.target.reset();
     document.getElementById("lineasProductos").innerHTML = "";
     document.getElementById("totalCantidad").innerText = "0";
     agregarProducto();
   })
   .catch(err => {
-    document.getElementById("respuesta").innerText = "Error al enviar pedido.";
-    console.error(err);
+    console.error("❌ Error al enviar pedido:", err);
+    respuestaDiv.style.color = "red";
+    respuestaDiv.innerText = "Error al enviar pedido. Revisa tu conexión o contacta al soporte.\n" + err.message;
   });
 });
 </script>
