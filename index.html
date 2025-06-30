@@ -10,7 +10,7 @@
     button { padding: 10px 20px; margin: 10px 0; background: #2c3e50; color: white; border: none; }
     table { width: 100%; margin-top: 10px; border-collapse: collapse; }
     th, td { border: 1px solid #aaa; padding: 8px; text-align: left; }
-    #respuesta { margin-top: 12px; font-weight: bold; color: green; white-space: pre-line; }
+    #respuesta { margin-top: 12px; font-weight: bold; white-space: pre-line; }
   </style>
 </head>
 <body>
@@ -28,7 +28,6 @@
   <input type="email" name="correo" required />
 
   <div id="lineasProductos"></div>
-
   <button type="button" onclick="agregarProducto()">+ Agregar producto</button>
 
   <label>Tipo de documento:</label>
@@ -41,7 +40,6 @@
   <textarea name="observaciones" rows="4"></textarea>
 
   <div><strong>Total unidades:</strong> <span id="totalCantidad">0</span></div>
-
   <button type="submit">Enviar pedido</button>
 </form>
 
@@ -50,9 +48,7 @@
 <script>
 const URL_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRh9vgGyUszsjFt0sLuCvbzYA2iwJdKV48zyLmHiupV3E4-dJG6kwPNJlDPliWff7jzi_ErHhEof6ZU/pub?output=csv";
 
-let categorias = {};
-let vendedores = [];
-let localidades = [];
+let categorias = {}, vendedores = [], localidades = [];
 
 fetch(URL_CSV)
   .then(res => res.text())
@@ -61,22 +57,20 @@ fetch(URL_CSV)
     localidades = filas.slice(1, 50).map(f => f[0]).filter(x => x);
     localidades.forEach(c => {
       let opt = document.createElement("option");
-      opt.value = c;
-      opt.textContent = c;
+      opt.value = c; opt.textContent = c;
       document.getElementById("ciudad").appendChild(opt);
     });
 
     vendedores = filas.slice(1, 30).map(f => f[1]).filter(x => x);
     vendedores.forEach(v => {
       let opt = document.createElement("option");
-      opt.value = v;
-      opt.textContent = v;
+      opt.value = v; opt.textContent = v;
       document.getElementById("vendedor").appendChild(opt);
     });
 
     let headers = filas[0];
     for (let i = 0; i < headers.length; i++) {
-      let categoria = headers[i].trim();
+      let categoria = headers[i]?.trim();
       if (!categoria) continue;
       categorias[categoria] = filas.slice(1, 51).map(f => f[i]).filter(x => x);
     }
@@ -130,39 +124,48 @@ function calcularTotal() {
   document.getElementById("totalCantidad").innerText = total;
 }
 
-document.getElementById("pedidoForm").addEventListener("submit", function(e) {
+document.getElementById("pedidoForm").addEventListener("submit", async function(e) {
   e.preventDefault();
   calcularTotal();
-
-  const form = new FormData(e.target);
-  form.append("timestamp", new Date().toISOString());
-  form.append("numLineas", document.querySelectorAll(".linea").length);
-
   const respuestaDiv = document.getElementById("respuesta");
   respuestaDiv.style.color = "black";
-  respuestaDiv.textContent = "Enviando pedido...";
+  respuestaDiv.textContent = "📌 Iniciando proceso de envío...\n";
 
-  fetch("https://script.google.com/macros/s/TU_ID_DEL_WEBAPP/exec", {
-    method: "POST",
-    body: form
-  })
-  .then(res => {
-    if (!res.ok) throw new Error("Error HTTP: " + res.status);
-    return res.text();
-  })
-  .then(respuesta => {
+  try {
+    const form = new FormData(e.target);
+    const timestamp = new Date().toISOString();
+    const numLineas = document.querySelectorAll(".linea").length;
+
+    form.append("timestamp", timestamp);
+    form.append("numLineas", numLineas);
+
+    respuestaDiv.textContent += "✅ Datos recopilados localmente.\n";
+
+    const response = await fetch("https://script.google.com/macros/s/TU_ID_DEL_WEBAPP/exec", {
+      method: "POST",
+      body: form
+    });
+
+    respuestaDiv.textContent += "📡 Solicitud enviada al backend...\n";
+
+    if (!response.ok) {
+      throw new Error(`❌ Error HTTP: ${response.status} ${response.statusText}`);
+    }
+
+    const mensaje = await response.text();
     respuestaDiv.style.color = "green";
-    respuestaDiv.innerText = " Pedido enviado correctamente.\n" + respuesta;
+    respuestaDiv.textContent += "✅ Respuesta del servidor recibida.\n🎉 Pedido enviado exitosamente.\n" + mensaje;
+
     e.target.reset();
     document.getElementById("lineasProductos").innerHTML = "";
     document.getElementById("totalCantidad").innerText = "0";
     agregarProducto();
-  })
-  .catch(err => {
-    console.error(" Error al enviar pedido:", err);
+
+  } catch (error) {
+    console.error("🚨 Error detallado:", error);
     respuestaDiv.style.color = "red";
-    respuestaDiv.innerText = "Error al enviar pedido. Revisa tu conexión o contacta al soporte.\n" + err.message;
-  });
+    respuestaDiv.textContent += "⚠️ Error detectado:\n" + error.message;
+  }
 });
 </script>
 
