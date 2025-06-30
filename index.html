@@ -152,14 +152,14 @@ document.getElementById("pedidoForm").addEventListener("submit", function(e) {
   })
   .then(respuesta => {
     respuestaDiv.style.color = "green";
-    respuestaDiv.innerText = "✅ Pedido enviado correctamente.\n" + respuesta;
+    respuestaDiv.innerText = " Pedido enviado correctamente.\n" + respuesta;
     e.target.reset();
     document.getElementById("lineasProductos").innerHTML = "";
     document.getElementById("totalCantidad").innerText = "0";
     agregarProducto();
   })
   .catch(err => {
-    console.error("❌ Error al enviar pedido:", err);
+    console.error(" Error al enviar pedido:", err);
     respuestaDiv.style.color = "red";
     respuestaDiv.innerText = "Error al enviar pedido. Revisa tu conexión o contacta al soporte.\n" + err.message;
   });
