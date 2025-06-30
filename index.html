@@ -8,8 +8,6 @@
     h2 { color: #2c3e50; }
     select, input, textarea { width: 100%; padding: 8px; margin: 8px 0; }
     button { padding: 10px 20px; margin: 10px 0; background: #2c3e50; color: white; border: none; }
-    table { width: 100%; margin-top: 10px; border-collapse: collapse; }
-    th, td { border: 1px solid #aaa; padding: 8px; text-align: left; }
     #respuesta { margin-top: 12px; font-weight: bold; white-space: pre-line; }
   </style>
 </head>
@@ -23,9 +21,6 @@
 
   <label>Ciudad / Poblado:</label>
   <select id="ciudad" name="ciudad" required></select>
-
-  <label>Correo del solicitante:</label>
-  <input type="email" name="correo" required />
 
   <div id="lineasProductos"></div>
   <button type="button" onclick="agregarProducto()">+ Agregar producto</button>
@@ -75,7 +70,7 @@ fetch(URL_CSV)
       categorias[categoria] = filas.slice(1, 51).map(f => f[i]).filter(x => x);
     }
 
-    agregarProducto(); // inicia
+    agregarProducto();
   });
 
 function agregarProducto() {
@@ -133,13 +128,10 @@ document.getElementById("pedidoForm").addEventListener("submit", async function(
 
   try {
     const form = new FormData(e.target);
-    const timestamp = new Date().toISOString();
-    const numLineas = document.querySelectorAll(".linea").length;
+    form.append("timestamp", new Date().toISOString());
+    form.append("numLineas", document.querySelectorAll(".linea").length);
 
-    form.append("timestamp", timestamp);
-    form.append("numLineas", numLineas);
-
-    respuestaDiv.textContent += "✅ Datos recopilados localmente.\n";
+    respuestaDiv.textContent += "Datos recopilados localmente.\n";
 
     const response = await fetch("https://script.google.com/macros/s/TU_ID_DEL_WEBAPP/exec", {
       method: "POST",
@@ -154,7 +146,7 @@ document.getElementById("pedidoForm").addEventListener("submit", async function(
 
     const mensaje = await response.text();
     respuestaDiv.style.color = "green";
-    respuestaDiv.textContent += "✅ Respuesta del servidor recibida.\n🎉 Pedido enviado exitosamente.\n" + mensaje;
+    respuestaDiv.textContent += " Respuesta del servidor recibida.\n🎉 Pedido enviado exitosamente.\n" + mensaje;
 
     e.target.reset();
     document.getElementById("lineasProductos").innerHTML = "";
@@ -162,9 +154,9 @@ document.getElementById("pedidoForm").addEventListener("submit", async function(
     agregarProducto();
 
   } catch (error) {
-    console.error("🚨 Error detallado:", error);
+    console.error(" Error detallado:", error);
     respuestaDiv.style.color = "red";
-    respuestaDiv.textContent += "⚠️ Error detectado:\n" + error.message;
+    respuestaDiv.textContent += "⚠Error detectado:\n" + error.message;
   }
 });
 </script>
