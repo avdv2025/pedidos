@@ -2,86 +2,160 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pedido de prueba</title>
+  <title>Formulario de Pedido</title>
   <style>
-    body { font-family: sans-serif; background: #f5f5f5; padding: 20px; max-width: 500px; margin: auto; }
-    select, input { width: 100%; padding: 8px; margin: 8px 0; }
-    button { background: green; color: white; padding: 10px 15px; border: none; }
-    #respuesta { margin-top: 12px; font-weight: bold; }
+    body { font-family: sans-serif; background: #f2f2f2; padding: 20px; max-width: 800px; margin: auto; }
+    h2 { color: #2c3e50; }
+    select, input, textarea { width: 100%; padding: 8px; margin: 8px 0; }
+    button { padding: 10px 20px; margin: 10px 0; background: #2c3e50; color: white; border: none; }
+    table { width: 100%; margin-top: 10px; border-collapse: collapse; }
+    th, td { border: 1px solid #aaa; padding: 8px; text-align: left; }
+    #respuesta { margin-top: 12px; font-weight: bold; color: green; }
   </style>
 </head>
 <body>
 
-  <h2>Formulario de Pedido</h2>
-  <form id="pedidoForm">
-    <input name="cliente" placeholder="Nombre del cliente" required />
-    <input name="correo" type="email" placeholder="Correo" required />
-    
-    <label for="categoria">Categoría:</label>
-    <select id="categoria" required></select>
+<h2>Formulario de Pedido</h2>
 
-    <label for="producto">Producto:</label>
-    <select id="producto" name="producto" required></select>
+<form id="pedidoForm">
+  <label>Vendedor:</label>
+  <select id="vendedor" name="vendedor" required></select>
 
-    <input name="cantidad" type="number" placeholder="Cantidad" required />
+  <label>Ciudad / Poblado:</label>
+  <select id="ciudad" name="ciudad" required></select>
 
-    <button type="submit">Enviar</button>
-  </form>
+  <label>Correo del solicitante:</label>
+  <input type="email" name="correo" required />
 
-  <div id="respuesta"></div>
+  <div id="lineasProductos"></div>
 
-  <script>
-    const categorias = {
-      // Aquí pondrás dinámicamente los productos desde tu hoja, por ahora hardcoded como ejemplo:
-      "Lácteos": ["Leche", "Queso", "Yogur"],
-      "Granos": ["Arroz", "Lentejas", "Caraotas"]
-    };
+  <button type="button" onclick="agregarProducto()">+ Agregar producto</button>
 
-    const categoriaSelect = document.getElementById("categoria");
-    const productoSelect = document.getElementById("producto");
+  <label>Tipo de documento:</label>
+  <select name="tipoDoc" required>
+    <option value="Factura">Factura</option>
+    <option value="Nota">Nota</option>
+  </select>
 
-    // Poblar categorías
-    for (let cat in categorias) {
+  <label>Observaciones:</label>
+  <textarea name="observaciones" rows="4"></textarea>
+
+  <div><strong>Total unidades:</strong> <span id="totalCantidad">0</span></div>
+
+  <button type="submit">Enviar pedido</button>
+</form>
+
+<div id="respuesta"></div>
+
+<script>
+const URL_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRh9vgGyUszsjFt0sLuCvbzYA2iwJdKV48zyLmHiupV3E4-dJG6kwPNJlDPliWff7jzi_ErHhEof6ZU/pub?output=csv";
+
+let categorias = {};
+let vendedores = [];
+let localidades = [];
+
+fetch(URL_CSV)
+  .then(res => res.text())
+  .then(csv => {
+    const filas = csv.split("\n").map(f => f.split(","));
+    // Localidades (hoja 3)
+    localidades = filas.slice(1, 31).map(f => f[0]).filter(x => x);
+    localidades.forEach(c => {
       let opt = document.createElement("option");
-      opt.value = cat;
-      opt.innerText = cat;
-      categoriaSelect.appendChild(opt);
+      opt.value = c;
+      opt.textContent = c;
+      document.getElementById("ciudad").appendChild(opt);
+    });
+    // Vendedores (hoja 2)
+    vendedores = filas.slice(1, 31).map(f => f[1]).filter(x => x);
+    vendedores.forEach(v => {
+      let opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = v;
+      document.getElementById("vendedor").appendChild(opt);
+    });
+    // Categorías y productos (hoja 1)
+    let headers = filas[0];
+    for (let i = 0; i < headers.length; i++) {
+      let categoria = headers[i].trim();
+      if (!categoria) continue;
+      categorias[categoria] = filas.slice(1, 51).map(f => f[i]).filter(x => x);
     }
+    agregarProducto(); // inicia con una línea
+  });
 
-    // Poblar productos según categoría
-    categoriaSelect.addEventListener("change", function() {
-      productoSelect.innerHTML = "";
-      categorias[this.value].forEach(p => {
-        let opt = document.createElement("option");
-        opt.value = p;
-        opt.innerText = p;
-        productoSelect.appendChild(opt);
-      });
-    });
+function agregarProducto() {
+  const div = document.createElement("div");
+  div.className = "linea";
+  const idx = document.querySelectorAll(".linea").length;
+  div.innerHTML = `
+    <hr/>
+    <label>Categoría:</label>
+    <select required onchange="actualizarProductos(this, ${idx})" name="cat${idx}"></select>
+    <label>Producto:</label>
+    <select required name="prod${idx}" id="prod${idx}"></select>
+    <label>Cantidad:</label>
+    <input type="number" name="cant${idx}" min="1" value="1" required oninput="calcularTotal()"/>
+  `;
+  document.getElementById("lineasProductos").appendChild(div);
 
-    // Inicializa productos
-    categoriaSelect.dispatchEvent(new Event("change"));
+  let selectCat = div.querySelector(`select[name=cat${idx}]`);
+  for (let cat in categorias) {
+    let opt = document.createElement("option");
+    opt.value = cat;
+    opt.textContent = cat;
+    selectCat.appendChild(opt);
+  }
+  actualizarProductos(selectCat, idx);
+}
 
-    document.getElementById("pedidoForm").addEventListener("submit", function(e) {
-      e.preventDefault();
-      const datos = new FormData(e.target);
+function actualizarProductos(select, idx) {
+  let categoria = select.value;
+  let productos = categorias[categoria] || [];
+  let prodSel = document.getElementById(`prod${idx}`);
+  prodSel.innerHTML = "";
+  productos.forEach(p => {
+    let opt = document.createElement("option");
+    opt.value = p;
+    opt.textContent = p;
+    prodSel.appendChild(opt);
+  });
+}
 
-      fetch("https://script.google.com/macros/s/ID_DEL_WEBAPP/exec", {
-        method: "POST",
-        body: datos
-      })
-      .then(res => res.text())
-      .then(msg => {
-        document.getElementById("respuesta").innerText = msg;
-        e.target.reset();
-      })
-      .catch(err => {
-        document.getElementById("respuesta").innerText = "Error al enviar los datos.";
-        console.error(err);
-      });
-    });
-  </script>
+function calcularTotal() {
+  let total = 0;
+  document.querySelectorAll("input[type='number']").forEach(input => {
+    total += parseInt(input.value || 0);
+  });
+  document.getElementById("totalCantidad").innerText = total;
+}
+
+document.getElementById("pedidoForm").addEventListener("submit", function(e) {
+  e.preventDefault();
+  calcularTotal();
+
+  const form = new FormData(e.target);
+  form.append("timestamp", new Date().toISOString());
+  form.append("numLineas", document.querySelectorAll(".linea").length);
+
+  fetch("https://script.google.com/macros/s/TU_ID_DEL_WEBAPP/exec", {
+    method: "POST",
+    body: form
+  })
+  .then(res => res.text())
+  .then(respuesta => {
+    document.getElementById("respuesta").innerText = respuesta;
+    e.target.reset();
+    document.getElementById("lineasProductos").innerHTML = "";
+    document.getElementById("totalCantidad").innerText = "0";
+    agregarProducto();
+  })
+  .catch(err => {
+    document.getElementById("respuesta").innerText = "Error al enviar pedido.";
+    console.error(err);
+  });
+});
+</script>
 
 </body>
 </html>
