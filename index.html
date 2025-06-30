@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pedido de prueba</title>
+  <style>
+    body { font-family: sans-serif; background: #f5f5f5; padding: 20px; max-width: 500px; margin: auto; }
+    select, input { width: 100%; padding: 8px; margin: 8px 0; }
+    button { background: green; color: white; padding: 10px 15px; border: none; }
+    #respuesta { margin-top: 12px; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <h2>Formulario de Pedido</h2>
+  <form id="pedidoForm">
+    <input name="cliente" placeholder="Nombre del cliente" required />
+    <input name="correo" type="email" placeholder="Correo" required />
+    
+    <label for="categoria">Categoría:</label>
+    <select id="categoria" required></select>
+
+    <label for="producto">Producto:</label>
+    <select id="producto" name="producto" required></select>
+
+    <input name="cantidad" type="number" placeholder="Cantidad" required />
+
+    <button type="submit">Enviar</button>
+  </form>
+
+  <div id="respuesta"></div>
+
+  <script>
+    const categorias = {
+      // Aquí pondrás dinámicamente los productos desde tu hoja, por ahora hardcoded como ejemplo:
+      "Lácteos": ["Leche", "Queso", "Yogur"],
+      "Granos": ["Arroz", "Lentejas", "Caraotas"]
+    };
+
+    const categoriaSelect = document.getElementById("categoria");
+    const productoSelect = document.getElementById("producto");
+
+    // Poblar categorías
+    for (let cat in categorias) {
+      let opt = document.createElement("option");
+      opt.value = cat;
+      opt.innerText = cat;
+      categoriaSelect.appendChild(opt);
+    }
+
+    // Poblar productos según categoría
+    categoriaSelect.addEventListener("change", function() {
+      productoSelect.innerHTML = "";
+      categorias[this.value].forEach(p => {
+        let opt = document.createElement("option");
+        opt.value = p;
+        opt.innerText = p;
+        productoSelect.appendChild(opt);
+      });
+    });
+
+    // Inicializa productos
+    categoriaSelect.dispatchEvent(new Event("change"));
+
+    document.getElementById("pedidoForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      const datos = new FormData(e.target);
+
+      fetch("https://script.google.com/macros/s/ID_DEL_WEBAPP/exec", {
+        method: "POST",
+        body: datos
+      })
+      .then(res => res.text())
+      .then(msg => {
+        document.getElementById("respuesta").innerText = msg;
+        e.target.reset();
+      })
+      .catch(err => {
+        document.getElementById("respuesta").innerText = "Error al enviar los datos.";
+        console.error(err);
+      });
+    });
+  </script>
+
+</body>
+</html>
