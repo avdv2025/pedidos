@@ -1,14 +1,60 @@
-<!DOCTYPE html>h
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
   <title>Formulario de Pedido</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: sans-serif; background: #f2f2f2; padding: 20px; max-width: 800px; margin: auto; }
-    h2 { color: #2c3e50; }
-    select, input, textarea { width: 100%; padding: 8px; margin: 8px 0; }
-    button { padding: 10px 20px; margin: 10px 0; background: #2c3e50; color: white; border: none; }
-    #respuesta { margin-top: 12px; font-weight: bold; white-space: pre-line; }
+    body {
+      font-family: sans-serif;
+      background: #f2f2f2;
+      padding: 20px;
+      max-width: 800px;
+      margin: auto;
+    }
+
+    h2 {
+      color: #2c3e50;
+    }
+
+    select, input, textarea {
+      width: 100%;
+      padding: 8px;
+      margin: 8px 0;
+      box-sizing: border-box;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin: 10px 0;
+      background: #2c3e50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    #respuesta {
+      margin-top: 12px;
+      font-weight: bold;
+      white-space: pre-line;
+    }
+
+    .linea {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .linea > label {
+      flex: 1 1 200px;
+    }
+
+    @media (max-width: 600px) {
+      .linea {
+        flex-direction: column;
+      }
+    }
   </style>
 </head>
 <body>
@@ -16,12 +62,14 @@
 <h2>Formulario de Pedido</h2>
 
 <form id="pedidoForm">
+  <!-- Select dinámico de vendedores y ciudades -->
   <label>Vendedor:</label>
   <select id="vendedor" name="vendedor" required></select>
 
   <label>Ciudad / Poblado:</label>
   <select id="ciudad" name="ciudad" required></select>
 
+  <!-- Área para productos -->
   <div id="lineasProductos"></div>
   <button type="button" onclick="agregarProducto()">+ Agregar producto</button>
 
@@ -41,76 +89,79 @@
 <div id="respuesta"></div>
 
 <script>
+// URL pública del archivo CSV con datos para el formulario
 const URL_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRh9vgGyUszsjFt0sLuCvbzYA2iwJdKV48zyLmHiupV3E4-dJG6kwPNJlDPliWff7jzi_ErHhEof6ZU/pub?output=csv";
 
 let categorias = {}, vendedores = [], localidades = [];
 
+// Cargar datos iniciales desde CSV (ciudades, vendedores, categorías y productos)
 fetch(URL_CSV)
   .then(res => res.text())
   .then(csv => {
     const filas = csv.split("\n").map(f => f.split(","));
-    localidades = filas.slice(1, 50).map(f => f[0]).filter(x => x);
+
+    // Llenar ciudades
+    localidades = filas.slice(1).map(f => f[0]).filter(x => x);
     localidades.forEach(c => {
-      let opt = document.createElement("option");
-      opt.value = c; opt.textContent = c;
-      document.getElementById("ciudad").appendChild(opt);
+      document.getElementById("ciudad").appendChild(new Option(c, c));
     });
 
-    vendedores = filas.slice(1, 30).map(f => f[1]).filter(x => x);
+    // Llenar vendedores
+    vendedores = filas.slice(1).map(f => f[1]).filter(x => x);
     vendedores.forEach(v => {
-      let opt = document.createElement("option");
-      opt.value = v; opt.textContent = v;
-      document.getElementById("vendedor").appendChild(opt);
+      document.getElementById("vendedor").appendChild(new Option(v, v));
     });
 
-    let headers = filas[0];
+    // Organizar productos por categoría usando encabezados
+    const headers = filas[0];
     for (let i = 0; i < headers.length; i++) {
-      let categoria = headers[i]?.trim();
+      const categoria = headers[i]?.trim();
       if (!categoria) continue;
-      categorias[categoria] = filas.slice(1, 51).map(f => f[i]).filter(x => x);
+      categorias[categoria] = filas.slice(1).map(f => f[i]).filter(x => x);
     }
 
-    agregarProducto();
+    agregarProducto(); // Agregar primera línea al iniciar
   });
 
+// Agrega una nueva línea de producto al formulario
 function agregarProducto() {
   const div = document.createElement("div");
   div.className = "linea";
   const idx = document.querySelectorAll(".linea").length;
+
   div.innerHTML = `
-    <hr/>
-    <label>Categoría:</label>
-    <select required onchange="actualizarProductos(this, ${idx})" name="cat${idx}"></select>
-    <label>Producto:</label>
-    <select required name="prod${idx}" id="prod${idx}"></select>
-    <label>Cantidad:</label>
-    <input type="number" name="cant${idx}" min="1" value="1" required oninput="calcularTotal()"/>
+    <label>Categoría:
+      <select required onchange="actualizarProductos(this, ${idx})" name="cat${idx}"></select>
+    </label>
+    <label>Producto:
+      <select required name="prod${idx}" id="prod${idx}"></select>
+    </label>
+    <label>Cantidad:
+      <input type="number" name="cant${idx}" min="1" value="1" required oninput="calcularTotal()"/>
+    </label>
   `;
+
   document.getElementById("lineasProductos").appendChild(div);
 
-  let selectCat = div.querySelector(`select[name=cat${idx}]`);
+  const selectCat = div.querySelector(`select[name=cat${idx}]`);
   for (let cat in categorias) {
-    let opt = document.createElement("option");
-    opt.value = cat;
-    opt.textContent = cat;
-    selectCat.appendChild(opt);
+    selectCat.appendChild(new Option(cat, cat));
   }
   actualizarProductos(selectCat, idx);
 }
 
+// Actualiza la lista de productos al cambiar categoría
 function actualizarProductos(select, idx) {
-  let categoria = select.value;
-  let productos = categorias[categoria] || [];
-  let prodSel = document.getElementById(`prod${idx}`);
+  const categoria = select.value;
+  const productos = categorias[categoria] || [];
+  const prodSel = document.getElementById(`prod${idx}`);
   prodSel.innerHTML = "";
   productos.forEach(p => {
-    let opt = document.createElement("option");
-    opt.value = p;
-    opt.textContent = p;
-    prodSel.appendChild(opt);
+    prodSel.appendChild(new Option(p, p));
   });
 }
 
+// Calcula el total de unidades ingresadas
 function calcularTotal() {
   let total = 0;
   document.querySelectorAll("input[type='number']").forEach(input => {
@@ -119,26 +170,24 @@ function calcularTotal() {
   document.getElementById("totalCantidad").innerText = total;
 }
 
+// Maneja el envío del formulario y conecta con Google Apps Script
 document.getElementById("pedidoForm").addEventListener("submit", async function(e) {
   e.preventDefault();
   calcularTotal();
+
   const respuestaDiv = document.getElementById("respuesta");
   respuestaDiv.style.color = "black";
-  respuestaDiv.textContent = "📌 Iniciando proceso de envío...\n";
+  respuestaDiv.textContent = "📦 Enviando pedido...\n";
 
   try {
     const form = new FormData(e.target);
     form.append("timestamp", new Date().toISOString());
     form.append("numLineas", document.querySelectorAll(".linea").length);
 
-    respuestaDiv.textContent += "Datos recopilados localmente.\n";
-
-    const response = await fetch("https://script.google.com/macros/s/AKfycbzjkOe3sWsvH5TK3q1tToKybDrvqjUMRBei1foNjnXl-M7b9ZyiCjAdibs-QbYTjgXS/exec", {
+    const response = await fetch("https://script.google.com/macros/s/TU_ID_DEL_WEBAPP/exec", {
       method: "POST",
       body: form
     });
-
-    respuestaDiv.textContent += "📡 Solicitud enviada al backend...\n";
 
     if (!response.ok) {
       throw new Error(`❌ Error HTTP: ${response.status} ${response.statusText}`);
@@ -146,17 +195,18 @@ document.getElementById("pedidoForm").addEventListener("submit", async function(
 
     const mensaje = await response.text();
     respuestaDiv.style.color = "green";
-    respuestaDiv.textContent += " Respuesta del servidor recibida.\n🎉 Pedido enviado exitosamente.\n" + mensaje;
+    respuestaDiv.textContent += "🎉 Pedido guardado correctamente:\n" + mensaje;
 
+    // Limpiar formulario y reiniciar
     e.target.reset();
     document.getElementById("lineasProductos").innerHTML = "";
     document.getElementById("totalCantidad").innerText = "0";
     agregarProducto();
 
   } catch (error) {
-    console.error(" Error detallado:", error);
+    console.error("Error:", error);
     respuestaDiv.style.color = "red";
-    respuestaDiv.textContent += "⚠Error detectado:\n" + error.message;
+    respuestaDiv.textContent += "⚠ Ocurrió un problema:\n" + error.message;
   }
 });
 </script>
